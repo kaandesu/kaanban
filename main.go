@@ -37,6 +37,22 @@ type Task struct {
 	status      status
 }
 
+func (t *Task) Next() {
+	if t.status == done {
+		t.status = todo
+	} else {
+		t.status++
+	}
+}
+
+func (t *Task) Prev() {
+	if t.status == todo {
+		t.status = done
+	} else {
+		t.status--
+	}
+}
+
 // list.Item interface
 
 func (t Task) FilterValue() string {
@@ -65,18 +81,30 @@ func New() *Model {
 	return &Model{}
 }
 
+func (m *Model) MoveToNext() tea.Msg {
+	selectedItem := m.lists[m.focused].SelectedItem()
+	selectedTask := selectedItem.(Task)
+	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
+	selectedTask.Next()
+	m.lists[selectedTask.status].InsertItem(len(m.lists[selectedTask.status].Items())-1, selectedTask)
+	return nil
+}
+
+func (m *Model) RemoveItem() tea.Msg {
+	selectedITem := m.lists[m.focused].SelectedItem()
+	selectedTask := selectedITem.(Task)
+	m.lists[selectedTask.status].RemoveItem(m.lists[m.focused].Index())
+	return nil
+}
+
 func (m *Model) Next() {
-	if m.focused == done {
-		m.focused = todo
-	} else {
+	if m.focused != done {
 		m.focused++
 	}
 }
 
 func (m *Model) Prev() {
-	if m.focused == todo {
-		m.focused = done
-	} else {
+	if m.focused != todo {
 		m.focused--
 	}
 }
@@ -134,6 +162,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Prev()
 		case "right", "l":
 			m.Next()
+		case "enter":
+			return m, m.MoveToNext
+		case "backspace":
+			return m, m.RemoveItem
 		}
 
 	}
