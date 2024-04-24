@@ -9,8 +9,8 @@ import (
 
 type Board struct {
 	help     help.Model
-	focused  status
 	cols     []column
+	focused  int
 	loaded   bool
 	quitting bool
 }
@@ -18,7 +18,7 @@ type Board struct {
 func NewBoard() *Board {
 	help := help.New()
 	help.ShowAll = true
-	return &Board{help: help, focused: todo}
+	return &Board{help: help, focused: 0}
 }
 
 func (m *Board) Init() tea.Cmd {
@@ -30,7 +30,7 @@ func (m *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		var cmd tea.Cmd
 		var cmds []tea.Cmd
-		m.help.Width = msg.Width - margin
+		m.help.Width = msg.Width - TotalStages
 		for i := 0; i < len(m.cols); i++ {
 			var res tea.Model
 			res, cmd = m.cols[i].Update(msg)
@@ -42,7 +42,7 @@ func (m *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case Form:
 		return m, m.cols[m.focused].Set(msg.index, msg.CreateTask())
 	case moveMsg:
-		return m, m.cols[m.focused.getNext()].Set(APPEND, msg.Task)
+		return m, m.cols[getNext(m.focused)].Set(APPEND, msg.Step)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Quit):
@@ -50,11 +50,11 @@ func (m *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, keys.Left):
 			m.cols[m.focused].Blur()
-			m.focused = m.focused.getPrev()
+			m.focused = getPrev(m.focused)
 			m.cols[m.focused].Focus()
 		case key.Matches(msg, keys.Right):
 			m.cols[m.focused].Blur()
-			m.focused = m.focused.getNext()
+			m.focused = getNext(m.focused)
 			m.cols[m.focused].Focus()
 		}
 	}
@@ -75,11 +75,16 @@ func (m *Board) View() string {
 	if !m.loaded {
 		return "loading..."
 	}
+
+	views := []string{}
+
+	for i := range m.cols {
+		views = append(views, m.cols[i].View())
+	}
+
 	board := lipgloss.JoinHorizontal(
 		lipgloss.Left,
-		m.cols[todo].View(),
-		m.cols[inProgress].View(),
-		m.cols[done].View(),
+		views...,
 	)
 	return lipgloss.JoinVertical(lipgloss.Left, board, m.help.View(keys))
 }
