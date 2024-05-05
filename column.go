@@ -10,10 +10,10 @@ import (
 const APPEND = -1
 
 type column struct {
+	focus  bool
+	status status
 	list   list.Model
 	height int
-	focus  bool
-	status int
 	width  int
 }
 
@@ -29,9 +29,9 @@ func (c *column) Focused() bool {
 	return c.focus
 }
 
-func newColumn(status int) column {
+func newColumn(status status) column {
 	var focus bool
-	if status == 0 {
+	if status == todo {
 		focus = true
 	}
 	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
@@ -50,12 +50,12 @@ func (c column) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		c.setSize(msg.Width, msg.Height)
-		c.list.SetSize(msg.Width/TotalStages, msg.Height/2)
+		c.list.SetSize(msg.Width/margin, msg.Height/2)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Edit):
 			if len(c.list.VisibleItems()) != 0 {
-				task := c.list.SelectedItem().(Step)
+				task := c.list.SelectedItem().(Task)
 				f := NewForm(task.title, task.description)
 				f.index = c.list.Index()
 				f.col = c
@@ -69,7 +69,6 @@ func (c column) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.Delete):
 			return c, c.DeleteCurrent()
 		case key.Matches(msg, keys.Enter):
-			// TODO: instead of move next make it EDIT
 			return c, c.MoveToNext()
 		}
 	}
@@ -91,7 +90,7 @@ func (c *column) DeleteCurrent() tea.Cmd {
 	return cmd
 }
 
-func (c *column) Set(i int, t Step) tea.Cmd {
+func (c *column) Set(i int, t Task) tea.Cmd {
 	if i != APPEND {
 		return c.list.SetItem(i, t)
 	}
@@ -99,7 +98,7 @@ func (c *column) Set(i int, t Step) tea.Cmd {
 }
 
 func (c *column) setSize(width, height int) {
-	c.width = width / TotalStages
+	c.width = width / margin
 }
 
 func (c *column) getStyle() lipgloss.Style {
@@ -119,23 +118,23 @@ func (c *column) getStyle() lipgloss.Style {
 }
 
 type moveMsg struct {
-	Step
+	Task
 }
 
 func (c *column) MoveToNext() tea.Cmd {
-	var step Step
+	var task Task
 	var ok bool
 	// If nothing is selected, the SelectedItem will return Nil.
-	if step, ok = c.list.SelectedItem().(Step); !ok {
+	if task, ok = c.list.SelectedItem().(Task); !ok {
 		return nil
 	}
 	// move item
 	c.list.RemoveItem(c.list.Index())
-	step.status = getNext(c.status)
+	task.status = c.status.getNext()
 
 	// refresh list
 	var cmd tea.Cmd
 	c.list, cmd = c.list.Update(nil)
 
-	return tea.Sequence(cmd, func() tea.Msg { return moveMsg{step} })
+	return tea.Sequence(cmd, func() tea.Msg { return moveMsg{task} })
 }
