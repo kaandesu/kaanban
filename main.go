@@ -3,35 +3,28 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type status int
+var TotalStages int
 
-func (s status) getNext() status {
-	if s == done {
-		return todo
+func getNext(s int) int {
+	if s != TotalStages-1 {
+		return s + 1
 	}
-	return s + 1
+	return s
 }
 
-func (s status) getPrev() status {
-	if s == todo {
-		return done
+func getPrev(s int) int {
+	if s != 0 {
+		return s - 1
 	}
-	return s - 1
+	return s
 }
-
-const margin = 4
 
 var board *Board
-
-const (
-	todo status = iota
-	inProgress
-	done
-)
 
 func main() {
 	f, err := tea.LogToFile("debug.log", "debug")
@@ -41,9 +34,13 @@ func main() {
 	}
 	defer f.Close()
 
+	levelName := os.Args[1]
+	TotalStages, _ = strconv.Atoi(os.Args[2])
+	fmt.Println(levelName, TotalStages)
+
 	board = NewBoard()
-	board.initLists()
-	p := tea.NewProgram(board)
+	board.initLists(TotalStages)
+	p := tea.NewProgram(board, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
