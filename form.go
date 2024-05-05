@@ -18,7 +18,7 @@ type Form struct {
 }
 
 func newDefaultForm() *Form {
-	return NewForm("step name", "")
+	return NewForm("task name", "")
 }
 
 func NewForm(title, description string) *Form {
@@ -33,8 +33,8 @@ func NewForm(title, description string) *Form {
 	return &form
 }
 
-func (f Form) CreateTask() Step {
-	return Step{f.col.status, f.title.Value(), f.description.Value()}
+func (f Form) CreateTask() Task {
+	return Task{f.col.status, f.title.Value(), f.description.Value()}
 }
 
 func (f Form) Init() tea.Cmd {
@@ -75,7 +75,7 @@ func (f Form) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (f Form) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		"Create a new step",
+		"Create a new task",
 		f.title.View(),
 		f.description.View(),
 		f.help.View(keys))
